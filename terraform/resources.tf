@@ -92,7 +92,7 @@ resource "azurerm_network_interface" "nic" {
     name                          = "internal"
     subnet_id                     = azurerm_subnet.subnet.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id = azurerm_public_ip.pip.ip_address
+    public_ip_address_id = azurerm_public_ip.pip.id
   }
 }
 // AZ virtual machine VM
@@ -116,19 +116,20 @@ resource "azurerm_linux_virtual_machine" "vm" {
     storage_account_type = "Standard_LRS"
   }
 
-  plan {
+   plan {
     name      = "centos-8-stream-free"
     product   = "centos-8-stream-free"
     publisher = "cognosys"
   }
 
   source_image_reference {
-    publisher = "cognosys"
-    offer     = "centos-8-stream-free"
-    sku       = "centos-8-stream-free"
-    version   = "22.03.28"
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "16.04-LTS"
+    version   = "latest"
   }
 }
+
 // AZ Registry
 resource "azurerm_container_registry" "acr03" {
   name                = "containerSantiRegistry1"

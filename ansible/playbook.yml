@@ -1,0 +1,121 @@
+- name: 'Despliegue de aplicación en AKS'
+  hosts: localhost
+  vars_files:
+    - vars/05_vars.yaml
+#install 
+  tasks:
+    - name: Install the latest version of Apache and MariaDB
+      ansible.builtin.dnf:
+        name:
+          - podman
+          - skopeo
+          - httpd
+          - mariadb-server
+        state: latest
+
+#community.general.htpasswd
+    - name: Add a user to a password file and ensure permissions are set
+      community.general.htpasswd:
+        path: /etc/nginx/passwdfile
+        name: admin
+        password: 'admin'
+        owner: root
+        group: www-data
+        mode: 0640
+
+#community.crypto.openssl_privatekey
+    - name: Generate an OpenSSL private key with the default values (4096 bits, RSA)
+      community.crypto.openssl_privatekey:
+        path: /etc/ssl/private/ansible.com.pem
+
+#community.crypto.openssl_csr
+    - name: Generate an OpenSSL Certificate Signing Request
+      community.crypto.openssl_csr:
+        path: /etc/ssl/csr/www.ansible.com.csr
+        privatekey_path: /etc/ssl/private/ansible.com.pem
+        common_name: www.ansible.com
+
+#community.crypto.x509_certificate
+    - name: Generate a Self Signed OpenSSL certificate
+      community.crypto.x509_certificate:
+        path: /etc/ssl/crt/ansible.com.crt
+        privatekey_path: /etc/ssl/private/ansible.com.pem
+        csr_path: /etc/ssl/csr/ansible.com.csr
+        provider: selfsigned
+
+#containers.podman.podman_login
+    - name: Login to default registry and create ${XDG_RUNTIME_DIR}/containers/auth.json
+      containers.podman.podman_login:
+        username: admin
+        password: 'admin'
+
+#containers.podman.podman_image
+    - name: Build and push an image using username and password
+      containers.podman.podman_image:
+        name: nginx
+        push: yes
+        username: bugs
+        password: "{{ vault_registry_password }}"
+        push_args:
+          dest: quay.io/acme
+
+#containers.podman.podman_tag
+    - containers.podman.podman_tag:
+        image: docker.io/continuumio/miniconda3
+        target_names:
+          - casopractico2
+          - casopractico2.1
+
+#containers.podman.podman_container
+    - name: Run container
+      containers.podman.podman_container:
+        name: container
+        image: quay.io/bitnami/wildfly
+        state: started
+
+#K8S 
+    - name: Create a k8s namespace
+      kubernetes.core.k8s:
+        name: testing
+        api_version: v1
+        kind: Namespace
+        state: present
+
+#kubernetes.core.k8s_info
+    - name: Get an existing Service object
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Service
+        name: web
+        namespace: testing
+      register: web_service
+
+
+#CUSTOM PRIMER INTENTO
+# - hosts: apache
+#   sudo: yes
+#   tasks:
+#     - name: install apache2
+#       apt: name=apache2 update_cache=yes state=latest
+# - name: installing podman
+#   package:
+#     name: "podman"
+#     state: present
+# - name: Pull an podman image
+#   containers.podman.podman_image:
+#     name: httpd
+# - name: Copying file into home
+#   copy:
+#     src: /root/ws1/index.html
+#     dest: /home
+# - name: Re-create a redis container
+#   containers.podman.podman_container:
+#     name: sarthak
+#     image: httpd
+#     state: started
+#     detach: true
+#     exposed_ports:
+#       - 80
+#     ports:
+#       - 4444:80
+#     volumes: /home/:/usr/local/apache2/htdocs/

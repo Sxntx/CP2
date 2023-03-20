@@ -1,4 +1,3 @@
-
 - name: 'Despliegue de aplicación en AKS'
   hosts: localhost
   vars_files:

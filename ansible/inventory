@@ -1,0 +1,6 @@
+python_interpreter_test_defined:
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+[webservers]
+azureuser@20.90.188.180
+
